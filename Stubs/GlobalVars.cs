@@ -1,4 +1,5 @@
 using System.IO;
+using System.Runtime.InteropServices;
 
 namespace SiPolicyEngine.Stubs;
 
@@ -14,10 +15,12 @@ public static class GlobalVars
 
 	/// <summary>
 	/// Path to the Code Integrity schema XSD file on the local system.
+	/// On Windows: C:\Windows\schemas\CodeIntegrity\cipolicy.xsd
+	/// On Linux/macOS: empty (schema validation will be skipped automatically).
 	/// </summary>
-	public static readonly string CISchemaPath = Path.Combine(
-		Environment.GetEnvironmentVariable("SystemDrive") + @"\",
-		"Windows", "schemas", "CodeIntegrity", "cipolicy.xsd");
+	public static readonly string CISchemaPath = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+		? Path.Combine(Environment.GetEnvironmentVariable("SystemDrive") + @"\", "Windows", "schemas", "CodeIntegrity", "cipolicy.xsd")
+		: string.Empty;
 
 	/// <summary>
 	/// Stub settings object.

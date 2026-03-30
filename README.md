@@ -1,14 +1,14 @@
 # SiPolicyEngine
 
-Standalone CLI tool for converting Windows Code Integrity (CI) policy files between XML and binary CIP formats.
+Cross-platform CLI tool for converting Windows Code Integrity (CI) policy files between XML and binary CIP formats.
 
-Extracted from the [AppControl Manager](https://github.com/HotCakeX/Harden-Windows-Security) SiPolicy module — no WinUI or GUI dependencies required.
+Extracted from the [AppControl Manager](https://github.com/HotCakeX/Harden-Windows-Security) SiPolicy module — no WinUI or GUI dependencies required. Runs on Windows, Linux, and macOS.
 
 ## Requirements
 
-- Windows 10 22H2+ / Windows 11
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- CI Policy schema file at `C:\Windows\schemas\CodeIntegrity\cipolicy.xsd` (ships with Windows)
+- **Windows**: CI Policy schema validation works automatically via `C:\Windows\schemas\CodeIntegrity\cipolicy.xsd`
+- **Linux/macOS**: Schema validation is skipped automatically (or supply your own via `--schema-path`)
 
 ## Build
 
@@ -20,15 +20,40 @@ dotnet build
 
 ### Publish as single native executable (AOT)
 
+**Windows:**
 ```bash
 dotnet publish -c Release -r win-x64
-# Output: bin/Release/net10.0-windows10.0.26100.0/win-x64/publish/SiPolicyEngine.exe
+dotnet publish -c Release -r win-arm64
 ```
 
-For ARM64:
+**Linux:**
+```bash
+dotnet publish -c Release -r linux-x64
+dotnet publish -c Release -r linux-arm64
+```
+
+**macOS:**
+```bash
+dotnet publish -c Release -r osx-x64
+dotnet publish -c Release -r osx-arm64
+```
+
+### Docker
+
+```dockerfile
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+COPY . .
+RUN dotnet publish -c Release -r linux-x64 -o /app
+
+FROM mcr.microsoft.com/dotnet/runtime-deps:10.0
+COPY --from=build /app /app
+ENTRYPOINT ["/app/SiPolicyEngine"]
+```
 
 ```bash
-dotnet publish -c Release -r win-arm64
+docker build -t sipolicyengine .
+docker run --rm -v $(pwd):/data sipolicyengine xml2cip /data/MyPolicy.xml /data/MyPolicy.cip
 ```
 
 ## Usage
@@ -45,8 +70,8 @@ SiPolicyEngine xml2cip MyPolicy.xml CustomOutput.cip
 SiPolicyEngine xml2cip --skip-validation MyPolicy.xml
 # Skip XML schema validation
 
-SiPolicyEngine xml2cip --schema-path "D:\schemas\cipolicy.xsd" MyPolicy.xml
-# Use custom schema path
+SiPolicyEngine xml2cip --schema-path /path/to/cipolicy.xsd MyPolicy.xml
+# Use custom schema path (useful on Linux/macOS)
 ```
 
 ### Convert CIP (binary) to XML
@@ -69,12 +94,22 @@ SiPolicyEngine cip2xml MyPolicy.cip CustomOutput.xml
 | `--schema-path` | Custom CI policy schema XSD path |
 | `-h`, `--help` | Show help |
 
+## Platform Notes
+
+| Platform | Schema Validation | Binary Conversion |
+|---|---|---|
+| Windows | Automatic (uses system XSD) | Full support |
+| Linux | Skipped unless `--schema-path` provided | Full support |
+| macOS | Skipped unless `--schema-path` provided | Full support |
+
+The binary conversion engine is pure C# with no platform-specific APIs — it works identically on all platforms.
+
 ## Project Structure
 
 ```
 SiPolicyEngine/
 ├── Program.cs                  # CLI entry point
-├── SiPolicyEngine.csproj       # .NET 10 project file
+├── SiPolicyEngine.csproj       # .NET 10 cross-platform project
 ├── GlobalUsings.cs             # Global using directives
 ├── SiPolicy/                   # Core conversion engine (from AppControl Manager)
 │   ├── Management.cs           # Entry points: ConvertXMLToBinary, SavePolicyToFile
@@ -88,7 +123,7 @@ SiPolicyEngine/
 │   └── CustomAppManifestLogics.cs # AppManifest serialization
 └── Stubs/                      # Lightweight replacements for WinUI dependencies
     ├── GlobalVars.cs           # Config, schema path, namespace constants
-    ├── CiPolicyTest.cs         # XML schema validation
+    ├── CiPolicyTest.cs         # XML schema validation (auto-skips on non-Windows)
     ├── Logger.cs               # stderr logging
     └── SecHttpClient.cs        # HTTP client for manifest URIs
 ```
