@@ -8,6 +8,9 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PublishAot>True</PublishAot>
+    <!-- Arch Linux (and other non-standard distros) use RIDs like arch-x64 that lack NativeAOT packages -->
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == '' and $([MSBuild]::IsOSPlatform('Linux'))">linux-x64</RuntimeIdentifier>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == '' and $([MSBuild]::IsOSPlatform('OSX'))">osx-x64</RuntimeIdentifier>
     <InvariantGlobalization>true</InvariantGlobalization>
     <AssemblyName>SiPolicyEngine</AssemblyName>
     <RootNamespace>SiPolicyEngine</RootNamespace>
